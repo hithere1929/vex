@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>VEX V5 Dragster Robot</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #111;
+      font-family: 'Segoe UI', Tahoma, Verdana, sans-serif;
+      color: white;
+      user-select: none;
+    }
+
+    #ui-container {
+      position: absolute;
+      left: 30px;
+      top: 30px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .btn {
+      width: 200px;
+      padding: 14px;
+      background: rgba(30, 30, 30, 0.7);
+      border: 2px solid #444;
+      border-radius: 8px;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+      text-transform: uppercase;
+      font-size: 13px;
+      letter-spacing: 1.5px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .btn:hover {
+      background: rgba(60, 60, 60, 0.8);
+      border-color: #777;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .btn.active {
+      background: #1e6ec7;
+      border-color: #55b3ff;
+      box-shadow: 0 0 20px rgba(85, 179, 255, 0.4);
+      text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+    }
+
+    #stats-panel {
+      position: absolute;
+      right: 30px;
+      top: 30px;
+      z-index: 10;
+      background: rgba(15, 15, 20, 0.85);
+      border: 1px solid #333;
+      padding: 24px;
+      border-radius: 12px;
+      width: 280px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    #stats-panel h2 {
+      margin: 0 0 20px 0;
+      color: #55b3ff;
+      font-size: 18px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      border-bottom: 1px solid #333;
+      padding-bottom: 12px;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 6px;
+    }
+
+    .stat-row:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+    }
+
+    .stat-val {
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    }
+
+    .stat-val.rubric-pass {
+      color: #44ff88;
+    }
+
+    .stat-label {
+      color: #99aab5;
+    }
+
+    #overlay-title {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      pointer-events: none;
+      background: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.5) 20%, rgba(0, 0, 0, 0.5) 80%, rgba(0, 0, 0, 0));
+      padding: 20px 60px;
+    }
+
+    #overlay-title h1 {
+      margin: 0;
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: 3px;
+      color: #fff;
+      text-shadow: 0 2px 15px rgba(0, 0, 0, 0.8);
+      text-transform: uppercase;
+    }
+
+    #overlay-title p {
+      margin: 8px 0 0 0;
+      color: #3bb3ff;
+      font-size: 15px;
+      letter-spacing: 1.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    canvas {
+      display: block;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+
+<body>
+
+  <div id="ui-container">
+    <button class="btn active" id="btn-autorotate">Auto-Rotate View</button>
+    <button class="btn active" id="btn-gears">Animate Gears</button>
+    <button class="btn" id="btn-explode">Explode View</button>
+  </div>
+
+  <div id="stats-panel">
+    <h2>Denny's Dragsters</h2>
+    <div class="stat-row"><span class="stat-label">Motors</span><span class="stat-val rubric-pass">2 V5 Smart
+        Motors</span></div>
+    <div class="stat-row"><span class="stat-label">Wheels</span><span class="stat-val rubric-pass">3 (Legal)</span>
+    </div>
+    <div class="stat-row"><span class="stat-label">Chassis</span><span class="stat-val rubric-pass">C-Channels (No Base
+        Plates)</span></div>
+    <div class="stat-row"><span class="stat-label">Drive</span><span class="stat-val rubric-pass">Compound Gear
+        Train</span></div>
+    <div class="stat-row"><span class="stat-label">Hardware Rules</span><span class="stat-val rubric-pass">Flats/Collars
+        Verified</span></div>
+    <div class="stat-row"><span class="stat-label">Start Sensor</span><span class="stat-val rubric-pass">Bumper Switch
+        (3s delay)</span></div>
+    <div class="stat-row"><span class="stat-label">Stop Sensor</span><span class="stat-val rubric-pass">Optical +
+        Distance</span></div>
+  </div>
+
+  <div id="overlay-title">
+    <h1>V5 Dragster</h1>
+    <p>Authentic 1-to-1 VEX Mechanical Assembly</p>
+  </div>
+
+  <script>
+    // --- SCENE SETUP ---
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(0x111111, 25, 75);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(25, 20, -25);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 0, 1.5);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2 + 0.1;
+
+    let isExploded = false;
+    let isAnimatingGears = true;
+    let isAutoHover = true;
+    controls.autoRotate = isAutoHover;
+    controls.autoRotateSpeed = 2.0;
+
+    const objectsToExplode = [];
+    const gearsToAnimate = [];
+
+    // --- ENLIGHTENMENT ---
+    scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+
+    const mainLight = new THREE.DirectionalLight(0xffffff, 1.3);
+    mainLight.position.set(15, 25, 10);
+    mainLight.castShadow = true;
+    mainLight.shadow.mapSize.width = 2048;
+    mainLight.shadow.mapSize.height = 2048;
+    mainLight.shadow.camera.left = -20;
+    mainLight.shadow.camera.right = 20;
+    mainLight.shadow.camera.top = 20;
+    mainLight.shadow.camera.bottom = -20;
+    mainLight.shadow.bias = -0.0005;
+    scene.add(mainLight);
+
+    const fillLight = new THREE.DirectionalLight(0x4488ff, 0.8);
+    fillLight.position.set(-20, 5, -10);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight(0x44ff88, 0.5);
+    rimLight.position.set(0, 10, -30);
+    scene.add(rimLight);
+
+    // --- ENVIRONMENT ---
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9, metalness: 0.1 });
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -2.0;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    const grid = new THREE.GridHelper(100, 100, 0x333333, 0x222222);
+    grid.position.y = -1.98;
+    scene.add(grid);
+
+    // --- MATERIALS ---
+    const matMetal = new THREE.MeshStandardMaterial({ color: 0x707580, metalness: 0.8, roughness: 0.3 });
+    const matDarkMetal = new THREE.MeshStandardMaterial({ color: 0x303038, metalness: 0.9, roughness: 0.4 });
+    const matGear60 = new THREE.MeshStandardMaterial({ color: 0xc9960e, metalness: 0.8, roughness: 0.25 });
+    const matGear24 = new THREE.MeshStandardMaterial({ color: 0x9ba9bb, metalness: 0.9, roughness: 0.2 });
+    const matGear12 = new THREE.MeshStandardMaterial({ color: 0xcd7f32, metalness: 0.8, roughness: 0.25 });
+    const matTire = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9, metalness: 0.05 });
+
+    // Texture mapping for the rail holes
+    const holeCnv = document.createElement('canvas');
+    holeCnv.width = 64; holeCnv.height = 64;
+    const hCtx = holeCnv.getContext('2d');
+    hCtx.fillStyle = '#707580'; hCtx.fillRect(0, 0, 64, 64); // Metal base
+    hCtx.fillStyle = '#111'; hCtx.fillRect(20, 20, 24, 24); // Square hole
+    const holeTex = new THREE.CanvasTexture(holeCnv);
+    holeTex.wrapS = holeTex.wrapT = THREE.RepeatWrapping;
+    holeTex.repeat.set(48, 4); // Rails are 24 inches
+
+    const matRailFace = new THREE.MeshStandardMaterial({ color: 0x707580, metalness: 0.7, roughness: 0.3, map: holeTex });
+    const matRailSimple = new THREE.MeshStandardMaterial({ color: 0x707580, metalness: 0.7, roughness: 0.3 });
+
+    // --- HELPER WRAPPER ---
+    function addPart(mesh, bx, by, bz, ex, ey, ez) {
+      mesh.position.set(bx, by, bz);
+      scene.add(mesh);
+      objectsToExplode.push({
+        obj: mesh,
+        basePos: new THREE.Vector3(bx, by, bz),
+        expPos: new THREE.Vector3(ex, ey, ez)
+      });
+    }
+
+    function addStandoff(bx, by, bz, rotZ, length) {
+      const g = new THREE.Group();
+      const geo = new THREE.CylinderGeometry(0.1, 0.1, length, 12);
+      const mat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.8 });
+      const m = new THREE.Mesh(geo, mat);
+      m.rotation.z = rotZ;
+      m.castShadow = true;
+      g.add(m);
+
+      const sGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.1, 6);
+      const sMat = new THREE.MeshStandardMaterial({ color: 0x444, metalness: 0.9 });
+      const s1 = new THREE.Mesh(sGeo, sMat);
+      s1.position.y = length / 2 + 0.05;
+      const s2 = new THREE.Mesh(sGeo, sMat);
+      s2.position.y = -length / 2 - 0.05;
+      m.add(s1, s2);
+      addPart(g, bx, by, bz, bx, by + 4.0, bz);
+    }
+
+    // --- VEX STRUCTURAL RULES: BEARING FLATS & COLLARS ---
+    function buildBearingFlat() {
+      const g = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.5, 0.1), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 }));
+      g.add(body);
+      const pegGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.3, 8);
+      const pegMat = matDarkMetal;
+      const p1 = new THREE.Mesh(pegGeo, pegMat); p1.rotation.x = Math.PI / 2; p1.position.set(-0.5, 0, 0);
+      const p2 = new THREE.Mesh(pegGeo, pegMat); p2.rotation.x = Math.PI / 2; p2.position.set(0.5, 0, 0);
+      g.add(p1, p2);
+      const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.15, 8), new THREE.MeshBasicMaterial({ color: 0x000 }));
+      hole.rotation.x = Math.PI / 2;
+      g.add(hole);
+      return g;
+    }
+
+    function buildShaftCollar() {
+      const g = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16), matMetal);
+      body.rotation.z = Math.PI / 2;
+      const setScrew = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), new THREE.MeshBasicMaterial({ color: 0x111 }));
+      setScrew.position.set(0, 0.3, 0);
+      g.add(body, setScrew);
+      return g;
+    }
+
+    function mountAxleHardware(zPos, yPos, axGrp) {
+      // Bearing Flats must stay statically attached to metal rails (Exploded identically)
+      const bfL = buildBearingFlat(); bfL.rotation.y = Math.PI / 2;
+      addPart(bfL, -2.85, yPos, zPos, -5.0, yPos, zPos);
+      const bfR = buildBearingFlat(); bfR.rotation.y = Math.PI / 2;
+      addPart(bfR, 2.85, yPos, zPos, 5.0, yPos, zPos);
+
+      // Inner Shaft Collars connected linearly to the spinning axle preventing wiggle
+      const scL = buildShaftCollar(); scL.position.set(-2.4, 0, 0);
+      const scR = buildShaftCollar(); scR.position.set(2.4, 0, 0);
+      axGrp.add(scL, scR);
+    }
+
+    // --- COMPONENT BUILDERS ---
+    function buildCChannel(len) {
+      const g = new THREE.Group();
+      const web = new THREE.Mesh(new THREE.BoxGeometry(0.05, 2.0, len), matRailFace);
+      web.position.set(-0.225, 0, 0);
+      const flangeT = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, len), matRailFace);
+      flangeT.position.set(0, 0.975, 0);
+      const flangeB = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, len), matRailFace);
+      flangeB.position.set(0, -0.975, 0);
+      web.castShadow = true; flangeT.castShadow = true; flangeB.castShadow = true;
+      g.add(web, flangeT, flangeB);
+      return g;
+    }
+
+    function buildGear(radius, thickness, teeth, material) {
+      const g = new THREE.Group();
+      const cylGeo = new THREE.CylinderGeometry(radius * 0.85, radius * 0.85, thickness, 32);
+      const c = new THREE.Mesh(cylGeo, material);
+      c.rotation.z = Math.PI / 2;
+      c.castShadow = true; c.receiveShadow = true;
+      g.add(c);
+
+      const hGeo = new THREE.BoxGeometry(thickness + 0.05, 0.22, 0.22);
+      const hole = new THREE.Mesh(hGeo, new THREE.MeshBasicMaterial({ color: 0x000 }));
+      g.add(hole);
+
+      const th = radius * 0.15;
+      const tw = (Math.PI * 2 * radius / teeth) * 0.4;
+      const tGeo = new THREE.BoxGeometry(thickness, th, tw);
+
+      for (let i = 0; i < teeth; i++) {
+        const t = new THREE.Mesh(tGeo, material);
+        t.castShadow = true;
+        const angle = (i / teeth) * Math.PI * 2;
+        t.rotation.x = angle;
+        const R = radius * 0.85 + th / 2;
+        t.position.set(0, Math.cos(angle) * R, Math.sin(angle) * R);
+        g.add(t);
+      }
+      return g;
+    }
+
+    function buildBigWheel() {
+      const g = new THREE.Group();
+      const tire = new THREE.Mesh(new THREE.TorusGeometry(1.6, 0.4, 16, 48), matTire);
+      tire.rotation.y = Math.PI / 2;
+      tire.castShadow = true; tire.receiveShadow = true;
+      g.add(tire);
+      const hubGeo = new THREE.CylinderGeometry(1.6, 1.6, 0.3, 32);
+      const hub = new THREE.Mesh(hubGeo, matDarkMetal);
+      hub.rotation.z = Math.PI / 2;
+      g.add(hub);
+      for (let i = 0; i < 5; i++) {
+        const spk = new THREE.Mesh(new THREE.BoxGeometry(0.35, 3.2, 0.1), matDarkMetal);
+        spk.rotation.x = (i / 5) * Math.PI;
+        g.add(spk);
+      }
+
+      // Shaft collars clamping the outer + inner face of large wheels
+      const colI = buildShaftCollar(); colI.position.x = -0.6;
+      const colO = buildShaftCollar(); colO.position.x = 0.6;
+      g.add(colI, colO);
+      return g;
+    }
+
+    function buildSmallWheel() {
+      const g = new THREE.Group();
+      const tire = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.375, 16, 32), matTire);
+      tire.rotation.y = Math.PI / 2;
+      tire.castShadow = true;
+      g.add(tire);
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.2, 16), matDarkMetal);
+      hub.rotation.z = Math.PI / 2;
+      g.add(hub);
+
+      // Shaft collars clamping small central wheel
+      const colI = buildShaftCollar(); colI.position.x = -0.6;
+      const colO = buildShaftCollar(); colO.position.x = 0.6;
+      g.add(colI, colO);
+      return g;
+    }
+
+    function buildMotor(isRight) {
+      const g = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.6, 2.0), new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 }));
+      body.castShadow = true; body.receiveShadow = true;
+      g.add(body);
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 0.4), new THREE.MeshStandardMaterial({ color: 0x1e6ec7, metalness: 0.3 }));
+      cap.position.z = 1.1;
+      g.add(cap);
+
+      const mount = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.2, 1.6), matMetal);
+      mount.position.x = isRight ? -1.0 : 1.0;
+
+      // Motor explicitly secured using 2 VEX standard locking screws
+      const scr = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.2, 6), matDarkMetal);
+      scr.rotation.z = Math.PI / 2;
+      const s1 = scr.clone(); s1.position.set(isRight ? -1.25 : 1.25, 0.3, 0);
+      const s2 = scr.clone(); s2.position.set(isRight ? -1.25 : 1.25, -0.3, 0);
+      g.add(mount, s1, s2);
+
+      return g;
+    }
+
+    function buildV5Brain() {
+      const g = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.0, 3.8), new THREE.MeshStandardMaterial({ color: 0x2b2b33, roughness: 0.8, metalness: 0.2 }));
+      body.castShadow = true;
+      g.add(body);
+
+      // Physical Structural Screwholes natively on V5 brains
+      const flangeGeo = new THREE.CylinderGeometry(0.15, 0.15, 1.1, 16);
+      const fMat = new THREE.MeshStandardMaterial({ color: 0x111 });
+      const mTL = new THREE.Mesh(flangeGeo, fMat); mTL.position.set(-1.3, 0, -1.6);
+      const mTR = mTL.clone(); mTR.position.set(1.3, 0, -1.6);
+      const mBL = mTL.clone(); mBL.position.set(-1.3, 0, 1.6);
+      const mBR = mTL.clone(); mBR.position.set(1.3, 0, 1.6);
+      g.add(mTL, mTR, mBL, mBR);
+
+      const bezel = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 3.0), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+      bezel.rotation.x = -Math.PI / 2; bezel.position.y = 0.51;
+      g.add(bezel);
+      const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 2.6), new THREE.MeshBasicMaterial({ color: 0x223344 }));
+      screen.rotation.x = -Math.PI / 2; screen.position.y = 0.52;
+      g.add(screen);
+      const edge = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.1), new THREE.MeshBasicMaterial({ color: 0xcc2222 }));
+      edge.rotation.x = -Math.PI / 2; edge.position.set(0, 0.52, 1.45);
+      g.add(edge);
+      const portGeo = new THREE.BoxGeometry(0.1, 0.35, 0.2);
+      const portMat = new THREE.MeshBasicMaterial({ color: 0x050505 });
+      for (let i = 0; i < 10; i++) {
+        const p1 = new THREE.Mesh(portGeo, portMat);
+        p1.position.set(1.31, -0.1, -1.5 + i * 0.33);
+        g.add(p1);
+        const p2 = new THREE.Mesh(portGeo, portMat);
+        p2.position.set(-1.31, -0.1, -1.5 + i * 0.33);
+        g.add(p2);
+      }
+      return g;
+    }
+
+    function buildV5Battery() {
+      const g = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.82, 1.18, 6.31), new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.7 }));
+      body.castShadow = true;
+      g.add(body);
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.05, 0.4), new THREE.MeshBasicMaterial({ color: 0x111 }));
+      panel.position.set(0, 0.59, -2.5);
+      g.add(panel);
+      for (let i = 0; i < 4; i++) {
+        const led = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.1), new THREE.MeshBasicMaterial({ color: 0x22ff22 }));
+        led.position.set(-0.25 + i * 0.16, 0.6, -2.5);
+        g.add(led);
+      }
+      return g;
+    }
+
+    function buildBatteryClip() {
+      const g = new THREE.Group();
+      // Base plate sitting on the beam 
+      const base = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.1, 0.6), new THREE.MeshStandardMaterial({ color: 0x111 }));
+      // Side walls wrapping the battery mathematically flawlessly
+      const wallL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.6), new THREE.MeshStandardMaterial({ color: 0x111 }));
+      wallL.position.set(-1.15, 0.45, 0);
+      const wallR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.6), new THREE.MeshStandardMaterial({ color: 0x111 }));
+      wallR.position.set(1.15, 0.45, 0);
+      // Screws bolting the clip to the bottom crossbeam
+      const scGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.3, 6);
+      const sL = new THREE.Mesh(scGeo, matDarkMetal); sL.position.set(-0.8, 0, 0);
+      const sR = new THREE.Mesh(scGeo, matDarkMetal); sR.position.set(0.8, 0, 0);
+      g.add(base, wallL, wallR, sL, sR);
+      return g;
+    }
+
+    function createLabelSprite(text, yOffset) {
+      const c = document.createElement('canvas');
+      c.width = 512; c.height = 128;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = 'rgba(20,20,25,0.7)';
+      if (ctx.roundRect) {
+        ctx.beginPath(); ctx.roundRect(16, 16, 480, 96, 16); ctx.fill();
+      } else {
+        ctx.fillRect(16, 16, 480, 96);
+      }
+      ctx.strokeStyle = 'rgba(85,179,255,0.6)';
+      ctx.lineWidth = 4;
+      if (ctx.roundRect) {
+        ctx.beginPath(); ctx.roundRect(16, 16, 480, 96, 16); ctx.stroke();
+      }
+      ctx.font = 'bold 34px "Segoe UI", sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      const lines = text.split('\n');
+      if (lines.length === 1) {
+        ctx.fillText(lines[0], 256, 75);
+      } else {
+        ctx.fillText(lines[0], 256, 55);
+        ctx.fillStyle = '#55b3ff';
+        ctx.font = 'bold 26px "Segoe UI", sans-serif';
+        ctx.fillText(lines[1], 256, 95);
+      }
+      const tex = new THREE.CanvasTexture(c);
+      const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+      const sprite = new THREE.Sprite(mat);
+      sprite.scale.set(5.5, 1.375, 1);
+      sprite.position.set(0, yOffset, 0);
+      return sprite;
+    }
+
+    // --- STRUCTURAL ASSEMBLY ---
+
+    // Realistic VEX C-Channels: 24-inch Long Frame Rails with Top/Bottom Flanges
+    const lRail = buildCChannel(24.0);
+    const rRail = buildCChannel(24.0);
+    rRail.rotation.z = Math.PI;
+
+    addPart(lRail, -2.75, 0, 0, -5.0, 0, 0);
+    addPart(rRail, 2.75, 0, 0, 5.0, 0, 0);
+
+    // Front Subsystem (Sensors elevated safely away on specific C-Channel crossbeam)
+    const frontBeamGroup = new THREE.Group();
+    const frontBeam = buildCChannel(6.0);
+    frontBeam.rotation.y = Math.PI / 2;
+    frontBeamGroup.add(frontBeam);
+
+    // VEX 90-Degree Angle Gussets connecting the crossbeam securely
+    const gussetGeo = new THREE.BoxGeometry(0.3, 0.8, 0.8);
+    const gussetL = new THREE.Mesh(gussetGeo, matMetal);
+    gussetL.position.set(-2.6, -0.4, 0);
+    const gussetR = new THREE.Mesh(gussetGeo, matMetal);
+    gussetR.position.set(2.6, -0.4, 0);
+
+    // Explicit hex screws plunging vertically through the beam into the rail
+    const gScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.8, 6), matDarkMetal);
+    const gs1 = gScrew.clone(); gs1.position.set(-2.75, 0.1, -0.25);
+    const gs2 = gScrew.clone(); gs2.position.set(-2.75, 0.1, 0.25);
+    const gs3 = gScrew.clone(); gs3.position.set(2.75, 0.1, -0.25);
+    const gs4 = gScrew.clone(); gs4.position.set(2.75, 0.1, 0.25);
+
+    frontBeamGroup.add(gussetL, gussetR, gs1, gs2, gs3, gs4);
+    addPart(frontBeamGroup, 0, 1.25, -11.0, 0, 4.0, -11.0);
+
+    // Front Electronics 
+    const screwGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.3, 6);
+    const tabGeo = new THREE.BoxGeometry(0.3, 0.1, 0.5);
+
+    const bumperGrp = new THREE.Group();
+    const bBody = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.6, 0.8), new THREE.MeshStandardMaterial({ color: 0x111 })); bBody.castShadow = true;
+    const bPaddle = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 0.1), new THREE.MeshStandardMaterial({ color: 0xcc2222 }));
+    bPaddle.position.set(0, 0, -0.45); bPaddle.rotation.x = -0.15;
+    const bTabL = new THREE.Mesh(tabGeo, new THREE.MeshStandardMaterial({ color: 0x111 })); bTabL.position.set(-0.65, -0.25, 0);
+    const bTabR = bTabL.clone(); bTabR.position.x = 0.65;
+    const bScrL = new THREE.Mesh(screwGeo, matDarkMetal); bScrL.position.set(-0.65, -0.15, 0);
+    const bScrR = bScrL.clone(); bScrR.position.x = 0.65;
+    bumperGrp.add(bBody, bPaddle, bTabL, bTabR, bScrL, bScrR);
+    bumperGrp.add(createLabelSprite("BUMPER SWITCH\n(Start / 3s Delay)", 1.8));
+    addPart(bumperGrp, -1.8, 1.8, -11.0, -3.5, 6.0, -11.0);
+
+    const optGrp = new THREE.Group();
+    const oBody = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.6, 0.8), new THREE.MeshStandardMaterial({ color: 0x3b3b3b })); oBody.castShadow = true;
+    const oEye = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.1), new THREE.MeshBasicMaterial({ color: 0x000 }));
+    oEye.position.set(0, 0.1, -0.45);
+    const oLed = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.1), new THREE.MeshBasicMaterial({ color: 0xffee00 }));
+    oLed.rotation.x = Math.PI / 2; oLed.position.set(0, -0.15, -0.45);
+    const oTabL = new THREE.Mesh(tabGeo, new THREE.MeshStandardMaterial({ color: 0x3b3b3b })); oTabL.position.set(-0.65, -0.25, 0);
+    const oTabR = oTabL.clone(); oTabR.position.x = 0.65;
+    const oScrL = new THREE.Mesh(screwGeo, matDarkMetal); oScrL.position.set(-0.65, -0.15, 0);
+    const oScrR = oScrL.clone(); oScrR.position.x = 0.65;
+    optGrp.add(oBody, oEye, oLed, oTabL, oTabR, oScrL, oScrR);
+    optGrp.add(createLabelSprite("V5 OPTICAL SENSOR\n(Stop Sign Detect)", 1.8));
+    addPart(optGrp, 0, 1.8, -11.0, 0, 6.0, -11.0);
+
+    const distGrp = new THREE.Group();
+    const dBody = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.6, 0.8), new THREE.MeshStandardMaterial({ color: 0x222 })); dBody.castShadow = true;
+    const eyeL = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.1), new THREE.MeshBasicMaterial({ color: 0x000 }));
+    eyeL.rotation.x = Math.PI / 2; eyeL.position.set(-0.25, 0, -0.45);
+    const eyeR = eyeL.clone(); eyeR.position.x = 0.25;
+    const laser = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.1), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+    laser.rotation.x = Math.PI / 2; laser.position.set(0, 0.18, -0.45);
+    const dTabL = new THREE.Mesh(tabGeo, new THREE.MeshStandardMaterial({ color: 0x222 })); dTabL.position.set(-0.65, -0.25, 0);
+    const dTabR = dTabL.clone(); dTabR.position.x = 0.65;
+    const dScrL = new THREE.Mesh(screwGeo, matDarkMetal); dScrL.position.set(-0.65, -0.15, 0);
+    const dScrR = dScrL.clone(); dScrR.position.x = 0.65;
+    distGrp.add(dBody, eyeL, eyeR, laser, dTabL, dTabR, dScrL, dScrR);
+    distGrp.add(createLabelSprite("V5 DISTANCE SENSOR", 1.8));
+    addPart(distGrp, 1.8, 1.8, -11.0, 3.5, 6.0, -11.0);
+
+    // --- DRIVE SYSTEM ---
+
+    // Front Wheel Assembly 
+    const fAxGrp = new THREE.Group();
+    const fAxle = new THREE.Mesh(new THREE.BoxGeometry(8.0, 0.18, 0.18), matDarkMetal);
+    fAxGrp.add(fAxle);
+    const fWheel = buildSmallWheel();
+    fWheel.add(createLabelSprite("SMALL FRONT WHEEL", 2.2));
+    fAxGrp.add(fWheel);
+    addPart(fAxGrp, 0, -0.3, -9.0, 0, -2.5, -9.0);
+    gearsToAnimate.push({ obj: fAxGrp, speed: 6.0 });
+    mountAxleHardware(-9.0, -0.3, fAxGrp);
+
+    // V5 Brain explicitly supported by 4 specific mounting standoff holes
+    addStandoff(-1.3, -0.3, -6.6, Math.PI / 2, 2.9);
+    addStandoff(-1.3, -0.3, -3.4, Math.PI / 2, 2.9);
+    addStandoff(1.3, -0.3, -6.6, Math.PI / 2, 2.9);
+    addStandoff(1.3, -0.3, -3.4, Math.PI / 2, 2.9);
+
+    const brainGroup = buildV5Brain();
+    brainGroup.add(createLabelSprite("V5 BRAIN (Python)", 2.5));
+    addPart(brainGroup, 0, 0.2, -5.0, 0, 7.0, -5.0);
+
+    // V5 Battery dynamically mounted into V5 Battery Clips placed on C-channels
+    const batBeam1 = buildCChannel(5.5); batBeam1.rotation.y = Math.PI / 2;
+    addPart(batBeam1, 0, 0, -1.5, 0, 4.0, -1.5);
+    const batBeam2 = buildCChannel(5.5); batBeam2.rotation.y = Math.PI / 2;
+    addPart(batBeam2, 0, 0, 2.5, 0, 4.0, 2.5);
+
+    const batClip1 = buildBatteryClip();
+    addPart(batClip1, 0, 0.25, -1.5, 0, 6.0, -1.5);
+    const batClip2 = buildBatteryClip();
+    addPart(batClip2, 0, 0.25, 2.5, 0, 6.0, 2.5);
+
+    const batteryGroup = buildV5Battery();
+    batteryGroup.add(createLabelSprite("V5 BATTERY (1.82\" x 6.31\")", 2.0));
+    addPart(batteryGroup, 0, 0.89, 0.5, 0, 9.0, 0.5);
+
+    // Motors explicitly bolted natively
+    const motorL = buildMotor(false); motorL.add(createLabelSprite("V5 SMART MOTOR", 2.5));
+    const motorR = buildMotor(true);
+    addPart(motorL, -3.7, -0.3, 6.0, -8.0, -0.3, 6.0);
+    addPart(motorR, 3.7, -0.3, 6.0, 8.0, -0.3, 6.0);
+
+    // THE COMPOUND GEARBOX
+    const axle1Grp = new THREE.Group();
+    const a1Rod = new THREE.Mesh(new THREE.BoxGeometry(7.5, 0.18, 0.18), matDarkMetal);
+    axle1Grp.add(a1Rod);
+    const g60 = buildGear(2.0, 0.6, 60, matGear60);
+    g60.position.x = -0.9;
+    g60.add(createLabelSprite("STAGE 1: 60T\nDRIVING GEAR", 3.2));
+    axle1Grp.add(g60);
+    addPart(axle1Grp, 0, -0.3, 6.0, 0, 4.0, 6.0);
+    gearsToAnimate.push({ obj: axle1Grp, speed: 1.0 });
+    mountAxleHardware(6.0, -0.3, axle1Grp);
+
+    const axle2Grp = new THREE.Group();
+    const a2Rod = new THREE.Mesh(new THREE.BoxGeometry(7.5, 0.18, 0.18), matDarkMetal);
+    axle2Grp.add(a2Rod);
+    const g24_input = buildGear(1.0, 0.4, 24, matGear24);
+    g24_input.position.x = -0.9;
+    const g24_output = buildGear(1.0, 0.4, 24, matGear24);
+    g24_output.position.x = 0.9;
+    g24_output.add(createLabelSprite("STAGE 2: TWO 24T\nCOMPOUND STAGE", 2.5));
+    axle2Grp.add(g24_input, g24_output);
+    addPart(axle2Grp, 0, -0.3, 9.0, 0, 6.5, 9.0);
+    gearsToAnimate.push({ obj: axle2Grp, speed: -2.5 });
+    mountAxleHardware(9.0, -0.3, axle2Grp);
+
+    const axle3Grp = new THREE.Group();
+    const a3Rod = new THREE.Mesh(new THREE.BoxGeometry(16.0, 0.18, 0.18), matDarkMetal);
+    axle3Grp.add(a3Rod);
+    const g12_final = buildGear(0.5, 0.5, 12, matGear12);
+    g12_final.position.x = 0.9;
+    g12_final.add(createLabelSprite("STAGE 3: 12T\nFINAL DRIVE 5:1 RATIO", 1.8));
+    axle3Grp.add(g12_final);
+
+    // Independent big wheels natively added to the spinning axle
+    const wL = buildBigWheel(); wL.add(createLabelSprite("LARGE REAR WHEEL", 3.0));
+    wL.position.x = -6.5; axle3Grp.add(wL);
+    const wR = buildBigWheel(); wR.add(createLabelSprite("LARGE REAR WHEEL", 3.0));
+    wR.position.x = 6.5; axle3Grp.add(wR);
+
+    addPart(axle3Grp, 0, -0.3, 10.5, 0, 9.0, 10.5);
+    gearsToAnimate.push({ obj: axle3Grp, speed: 5.0 });
+    mountAxleHardware(10.5, -0.3, axle3Grp);
+
+    // --- ANIMATION CONTROLS AND LOOP ---
+    document.getElementById('btn-autorotate').addEventListener('click', (e) => {
+      isAutoHover = !isAutoHover;
+      controls.autoRotate = isAutoHover;
+      e.target.classList.toggle('active', isAutoHover);
+    });
+
+    document.getElementById('btn-gears').addEventListener('click', (e) => {
+      isAnimatingGears = !isAnimatingGears;
+      e.target.classList.toggle('active', isAnimatingGears);
+    });
+
+    document.getElementById('btn-explode').addEventListener('click', (e) => {
+      isExploded = !isExploded;
+      e.target.classList.toggle('active', isExploded);
+
+      if (isExploded && isAutoHover) {
+        isAutoHover = false;
+        controls.autoRotate = false;
+        document.getElementById('btn-autorotate').classList.remove('active');
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      for (let i = 0; i < objectsToExplode.length; i++) {
+        const item = objectsToExplode[i];
+        const target = isExploded ? item.expPos : item.basePos;
+        item.obj.position.lerp(target, 0.08);
+      }
+
+      if (isAnimatingGears) {
+        for (let i = 0; i < gearsToAnimate.length; i++) {
+          const rig = gearsToAnimate[i];
+          rig.obj.rotation.x -= rig.speed * 0.015;
+        }
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+  </script>
+</body>
+
+</html>
